@@ -6,18 +6,18 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT S
 add_executable(SAM)
 
 target_sources(SAM PRIVATE
-    src/createtransitions.c
-    src/debug.c
+    src/createtransitions.cpp
+    src/debug.cpp
     src/debug.h
-    src/main.c
-    src/processframes.c
-    src/reciter.c
+    src/main.cpp
+    src/processframes.cpp
+    src/reciter.cpp
     src/reciter.h
     src/ReciterTabs.h
-    src/render.c
+    src/render.cpp
     src/render.h
     src/RenderTabs.h
-    src/sam.c
+    src/sam.cpp
     src/sam.h
     src/SamTabs.h
 )
