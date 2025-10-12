@@ -3,6 +3,9 @@ project(SAM)
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SAM)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_executable(SAM)
 
 target_sources(SAM PRIVATE
@@ -21,3 +24,7 @@ target_sources(SAM PRIVATE
     src/sam.h
     src/SamTabs.h
 )
+
+if(MSVC)
+    target_compile_options(SAM PUBLIC "/permissive-")
+endif()

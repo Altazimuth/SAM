@@ -3,6 +3,8 @@
 #include <ctype.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include "reciter.h"
 #include "sam.h"
 #include "debug.h"
@@ -209,22 +211,22 @@ int main(int argc, char **argv)
 			} else
 			if (strcmp(&argv[i][1], "pitch")==0)
 			{
-				SetPitch((unsigned char)min(atoi(argv[i+1]),255));
+				SetPitch((unsigned char)std::min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "speed")==0)
 			{
-				SetSpeed((unsigned char)min(atoi(argv[i+1]),255));
+				SetSpeed((unsigned char)std::min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "mouth")==0)
 			{
-				SetMouth((unsigned char)min(atoi(argv[i+1]),255));
+				SetMouth((unsigned char)std::min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "throat")==0)
 			{
-				SetThroat((unsigned char)min(atoi(argv[i+1]),255));
+				SetThroat((unsigned char)std::min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			{
