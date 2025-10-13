@@ -1,16 +1,15 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-void PrintPhonemes(unsigned char *phonemeindex, unsigned char *phonemeLength, unsigned char *stress);
+#include <stdint.h>
+#include <vector>
+
+void PrintPhonemes(const std::vector<uint8_t> &phonemeindex, const std::vector<uint8_t> &phonemeLength, const std::vector<uint8_t> &stress);
 void PrintOutput(
-	unsigned char *flag, 
-	unsigned char *f1, 
-	unsigned char *f2, 
-	unsigned char *f3,
-	unsigned char *a1, 
-	unsigned char *a2, 
-	unsigned char *a3,
-	unsigned char *p);
+	const std::vector<uint8_t> &flag,
+	const std::vector<uint8_t> *const &f,
+	const std::vector<uint8_t> *const &a,
+	const std::vector<uint8_t> &p);
 
 void PrintRule(unsigned short offset);
 

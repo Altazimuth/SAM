@@ -1,7 +1,9 @@
 #ifndef SAM_H
 #define SAM_H
 
-void SetInput(unsigned char *_input);
+#include <string>
+
+void SetInput(const std::string &_input);
 void SetSpeed(unsigned char _speed);
 void SetPitch(unsigned char _pitch);
 void SetMouth(unsigned char _mouth);
@@ -10,7 +12,7 @@ void EnableSingmode();
 
 int SAMMain();
 
-char* GetBuffer();
+std::string& GetBuffer();
 int GetBufferLength();
 
 

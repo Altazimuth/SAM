@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+
+#include <string>
+#include <vector>
 
 #include "render.h"
 #include "RenderTabs.h"
@@ -16,21 +20,15 @@ extern unsigned char pitch;
 extern int singmode;
 
 
-extern unsigned char phonemeIndexOutput[60]; //tab47296
-extern unsigned char stressOutput[60]; //tab47365
-extern unsigned char phonemeLengthOutput[60]; //tab47416
+extern std::vector<uint8_t> phonemeIndexOutput; //tab47296
+extern std::vector<uint8_t> stressOutput; //tab47365
+extern std::vector<uint8_t> phonemeLengthOutput; //tab47416
 
-unsigned char pitches[256]; // tab43008
+std::vector<uint8_t> pitches; // tab43008
+std::vector<uint8_t> frequency[3];
+std::vector<uint8_t> amplitude[3];
 
-unsigned char frequency1[256];
-unsigned char frequency2[256];
-unsigned char frequency3[256];
-
-unsigned char amplitude1[256];
-unsigned char amplitude2[256];
-unsigned char amplitude3[256];
-
-unsigned char sampledConsonantFlag[256]; // tab44800
+std::vector<uint8_t> sampledConsonantFlag; // tab44800
 
 
 void AddInflection(unsigned char mem48, unsigned char X);
@@ -46,7 +44,7 @@ unsigned char trans(unsigned char a, unsigned char b)
 
 // contains the final soundbuffer
 extern int bufferpos;
-extern char *buffer;
+extern std::string buffer;
 
 
 
@@ -62,12 +60,27 @@ static const int timetable[5][5] =
 
 void Output(int index, unsigned char A)
 {
+	constexpr int K_LOOP_END = 5;
+
 	static unsigned oldtimetableindex = 0;
 	int k;
 	bufferpos += timetable[oldtimetableindex][index];
+	static int adds = 0;
+	adds++;
+	if(bufferpos < 0)
+		__debugbreak();
 	oldtimetableindex = index;
+
+	if(buffer.capacity() <= bufferpos/50 + (K_LOOP_END - 1))
+	{
+		buffer.reserve((bufferpos/50 + (K_LOOP_END - 1) + 1) * 2);
+	}
+
+	if(buffer.size() <= bufferpos/50 + (K_LOOP_END - 1)) {
+		buffer.resize(bufferpos/50 + (K_LOOP_END - 1) + 1);
+	}
 	// write a little bit in advance
-	for(k=0; k<5; k++)
+	for(k=0; k<K_LOOP_END; k++)
 		buffer[bufferpos/50 + k] = (A & 15)*16;
 }
 
@@ -157,7 +170,7 @@ static void RenderUnvoicedSample(unsigned short hi, unsigned char off, unsigned 
 // For voices samples, samples are interleaved between voiced output.
 
 
-void RenderSample(unsigned char *mem66, unsigned char consonantFlag, unsigned char mem49)
+void RenderSample(unsigned char *mem66, unsigned char consonantFlag, uint16_t mem49)
 {     
 	// mem49 == current phoneme's index
 
@@ -196,9 +209,9 @@ void RenderSample(unsigned char *mem66, unsigned char consonantFlag, unsigned ch
 //
 static void CreateFrames()
 {
-	unsigned char X = 0;
+	uint16_t X = 0;
     unsigned int i = 0;
-    while(i < 256) {
+    while(i < phonemeIndexOutput.size()) {
         // get the phoneme at the index
         unsigned char phoneme = phonemeIndexOutput[i];
 		unsigned char phase1;
@@ -215,15 +228,35 @@ static void CreateFrames()
 	
         // get number of frames to write
         phase2 = phonemeLengthOutput[i];
+
+		if(frequency[0].capacity() <= X + phase2) {
+			for(int j = 0; j < 3; j++)
+			{
+				frequency[j].reserve((X + phase2) * 2 + 1);
+				amplitude[j].reserve((X + phase2) * 2 + 1);
+			}
+			sampledConsonantFlag.reserve((X + phase2) * 2 + 1);
+			pitches.reserve((X + phase2) * 2 + 1);
+		}
+
+		if(frequency[0].size() <= X + phase2) {
+			for(int j = 0; j < 3; j++)
+			{
+				frequency[j].resize((X + phase2) * 2 + 1);
+				amplitude[j].resize((X + phase2) * 2 + 1);
+			}
+			sampledConsonantFlag.resize((X + phase2) * 2 + 1);
+			pitches.resize((X + phase2) * 2 + 1);
+		}
 	
         // copy from the source to the frames list
         do {
-            frequency1[X] = freq1data[phoneme];     // F1 frequency
-            frequency2[X] = freq2data[phoneme];     // F2 frequency
-            frequency3[X] = freq3data[phoneme];     // F3 frequency
-            amplitude1[X] = ampl1data[phoneme];     // F1 amplitude
-            amplitude2[X] = ampl2data[phoneme];     // F2 amplitude
-            amplitude3[X] = ampl3data[phoneme];     // F3 amplitude
+            frequency[0][X] = freq1data[phoneme];     // F1 frequency
+            frequency[1][X] = freq2data[phoneme];     // F2 frequency
+            frequency[2][X] = freq3data[phoneme];     // F3 frequency
+            amplitude[0][X] = ampl1data[phoneme];     // F1 amplitude
+            amplitude[1][X] = ampl2data[phoneme];     // F2 amplitude
+            amplitude[2][X] = ampl3data[phoneme];     // F3 amplitude
             sampledConsonantFlag[X] = sampledConsonantFlags[phoneme];        // phoneme data for sampled consonants
             pitches[X] = pitch + phase1;      // pitch
             ++X;
@@ -241,11 +274,11 @@ static void CreateFrames()
 void RescaleAmplitude() 
 {
     int i;
-    for(i=255; i>=0; i--)
+    for(i=amplitude->size()-1; i>=0; i--)
         {
-            amplitude1[i] = amplitudeRescale[amplitude1[i]];
-            amplitude2[i] = amplitudeRescale[amplitude2[i]];
-            amplitude3[i] = amplitudeRescale[amplitude3[i]];
+            amplitude[0][i] = amplitudeRescale[amplitude[0][i]];
+            amplitude[1][i] = amplitudeRescale[amplitude[1][i]];
+            amplitude[2][i] = amplitudeRescale[amplitude[2][i]];
         }
 }
 
@@ -260,10 +293,10 @@ void RescaleAmplitude()
 void AssignPitchContour()
 {	
     int i;
-    for(i=0; i<256; i++) {
+    for(i=0; i<pitches.size(); i++) {
         // subtract half the frequency of the formant 1.
         // this adds variety to the voice
-        pitches[i] -= (frequency1[i] >> 1);
+        pitches[i] -= (frequency[0][i] >> 1);
     }
 }
 
@@ -283,7 +316,7 @@ void AssignPitchContour()
 // 4. Render the each frame.
 void Render()
 {
-    unsigned char t;
+	uint16_t t;
 
 	if (phonemeIndexOutput[0] == 255) return; //exit if no data
 
@@ -294,7 +327,7 @@ void Render()
     RescaleAmplitude();
 
     if (debug) {
-        PrintOutput(sampledConsonantFlag, frequency1, frequency2, frequency3, amplitude1, amplitude2, amplitude3, pitches);
+        PrintOutput(sampledConsonantFlag, frequency, amplitude, pitches);
     }
 
     ProcessFrames(t);

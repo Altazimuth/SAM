@@ -28,7 +28,7 @@ void fopen_s(FILE ** f, const char * filename, const char * mode) {
 }
 #endif
 
-void WriteWav(char* filename, char* buffer, int bufferlength)
+void WriteWav(char* filename, std::string& buffer, int bufferlength)
 {
 	unsigned int filesize;
 	unsigned int fmtlength = 16;
@@ -60,7 +60,7 @@ void WriteWav(char* filename, char* buffer, int bufferlength)
 	//data chunk
 	fwrite("data", 4, 1, file);
 	fwrite(&bufferlength, 4, 1, file);
-	fwrite(buffer, bufferlength, 1, file);
+	fwrite(buffer.c_str(), bufferlength, 1, file);
 
 	fclose(file);
 }
@@ -117,7 +117,7 @@ int pos = 0;
 void MixAudio(void *unused, Uint8 *stream, int len)
 {
 	int bufferpos = GetBufferLength();
-	char *buffer = GetBuffer();
+	std::string &buffer = GetBuffer();
 	int i;
 	if (pos >= bufferpos) return;
 	if ((bufferpos-pos) < len) len = (bufferpos-pos);
@@ -173,9 +173,7 @@ int main(int argc, char **argv)
 	int phonetic = 0;
 
 	char* wavfilename = NULL;
-	unsigned char input[256];
-	
-	memset(input, 0, 256);
+	std::string input;
 
 	if (argc <= 1)
 	{
@@ -188,8 +186,8 @@ int main(int argc, char **argv)
 	{
 		if (argv[i][0] != '-')
 		{
-			strcat_s((char*)input, 256, argv[i]);
-			strcat_s((char*)input, 256, " ");
+			input += argv[i];
+			input += " ";
 		} else
 		{
 			if (strcmp(&argv[i][1], "wav")==0)
@@ -243,17 +241,21 @@ int main(int argc, char **argv)
 
 	if (debug)
 	{
-		if (phonetic) printf("phonetic input: %s\n", input);
-		else printf("text input: %s\n", input); 
+		if (phonetic) printf("phonetic input: %s\n", input.c_str());
+		else printf("text input: %s\n", input.c_str()); 
 	}
 	
 	if (!phonetic)
 	{
-		strcat_s((char*)input, 256, "[");
+		// remove '[' as it's used as an internal signal
+		for(size_t pos = input.find('['); pos != std::string::npos; pos = input.find('['))
+			input[pos] = ' ';
+
+		input += "[";
 		if (!TextToPhonemes(input)) return 1;
 		if (debug)
-			printf("phonetic input: %s\n", input);
-	} else strcat_s((char*)input, 256, "\x9b");
+			printf("phonetic input: %s\n", input.c_str());
+	} else input += "\x9b";
 
 #ifdef USESDL
 	if ( SDL_Init(SDL_INIT_AUDIO) < 0 ) 

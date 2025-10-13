@@ -1,12 +1,14 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+#include <stdint.h>
+
 void Render();
 void SetMouthThroat(unsigned char mouth, unsigned char throat);
 
-void ProcessFrames(unsigned char mem48);
-void RenderSample(unsigned char *mem66, unsigned char consonantFlag, unsigned char mem49);
-unsigned char CreateTransitions();
+void ProcessFrames(uint16_t mem48);
+void RenderSample(unsigned char *mem66, unsigned char consonantFlag, uint16_t mem49);
+uint16_t CreateTransitions();
 
 #define PHONEME_PERIOD (1)
 #define PHONEME_QUESTION (2)

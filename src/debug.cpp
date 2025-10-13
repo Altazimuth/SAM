@@ -1,9 +1,11 @@
 #include<stdio.h>
 
+#include "debug.h"
+
 extern unsigned char signInputTable1[];
 extern unsigned char signInputTable2[];
 
-void PrintPhonemes(unsigned char *phonemeindex, unsigned char *phonemeLength, unsigned char *stress)
+void PrintPhonemes(const std::vector<uint8_t> &phonemeindex, const std::vector<uint8_t> &phonemeLength, const std::vector<uint8_t> &stress)
 {
 	int i = 0;
 	printf("===========================================\n");
@@ -12,7 +14,7 @@ void PrintPhonemes(unsigned char *phonemeindex, unsigned char *phonemeLength, un
 	printf(" idx    phoneme  length  stress\n");
 	printf("------------------------------\n");
 
-	while((phonemeindex[i] != 255) && (i < 255))
+	while(i < phonemeindex.size())
 	{
 		if (phonemeindex[i] < 81)
 		{
@@ -34,23 +36,19 @@ void PrintPhonemes(unsigned char *phonemeindex, unsigned char *phonemeLength, un
 }
 
 void PrintOutput(
-	unsigned char *flag, 
-	unsigned char *f1, 
-	unsigned char *f2, 
-	unsigned char *f3,
-	unsigned char *a1, 
-	unsigned char *a2, 
-	unsigned char *a3,
-	unsigned char *p)
+	const std::vector<uint8_t> &flag,
+	const std::vector<uint8_t> *const &f,
+	const std::vector<uint8_t> *const &a,
+	const std::vector<uint8_t> &p)
 {
 	int i = 0;
 	printf("===========================================\n");
 	printf("Final data for speech output:\n\n");
 	printf(" flags ampl1 freq1 ampl2 freq2 ampl3 freq3 pitch\n");
 	printf("------------------------------------------------\n");
-	while(i < 255)
+	while(i < flag.size())
 	{
-		printf("%5i %5i %5i %5i %5i %5i %5i %5i\n", flag[i], a1[i], f1[i], a2[i], f2[i], a3[i], f3[i], p[i]);
+		printf("%5i %5i %5i %5i %5i %5i %5i %5i\n", flag[i], a[0][i], f[0][i], a[1][i], f[1][i], a[2][i], f[2][i], p[i]);
 		i++;
 	}
 	printf("===========================================\n");

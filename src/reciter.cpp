@@ -1,16 +1,18 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include "reciter.h"
 #include "ReciterTabs.h"
 #include "debug.h"
 
-unsigned char A, X;
+unsigned char A;
+uint16_t X;
 extern int debug;
 
-static unsigned char inputtemp[256];   // secure copy of input tab36096
+static std::string inputtemp;   // secure copy of input tab36096
 
 /* Retrieve flags for character at mem59-1 */
-unsigned char Code37055(unsigned char npos, unsigned char mask)
+unsigned char Code37055(uint16_t npos, unsigned char mask)
 {
 	X = npos;
 	return tab36376[inputtemp[X]] & mask;
@@ -36,7 +38,7 @@ unsigned char GetRuleByte(unsigned short mem62, unsigned char Y) {
 	return rules[address+Y];
 }
 
-int handle_ch2(unsigned char ch, unsigned char mem) {
+int handle_ch2(unsigned char ch, uint16_t mem) {
     unsigned char tmp;
     X = mem;
     tmp = tab36376[inputtemp[mem]];
@@ -53,7 +55,7 @@ int handle_ch2(unsigned char ch, unsigned char mem) {
 }
 
 
-int handle_ch(unsigned char ch, unsigned char mem) {
+int handle_ch(unsigned char ch, uint16_t mem) {
     unsigned char tmp;
     X = mem;
     tmp = tab36376[inputtemp[X]];
@@ -79,22 +81,24 @@ int handle_ch(unsigned char ch, unsigned char mem) {
 }
 
 
-int TextToPhonemes(unsigned char *input) {
-	unsigned char mem56;      //output position for phonemes
+int TextToPhonemes(std::string &input) {
+    uint16_t mem56;      //output position for phonemes
 	unsigned char mem57;
-	unsigned char mem58;
-	unsigned char mem59;
-	unsigned char mem60;
-	unsigned char mem61;
+    uint16_t mem58;
+    uint16_t mem59;
+    uint16_t mem60;
+    uint16_t mem61;
 	unsigned short mem62;     // memory position of current rule
 
-	unsigned char mem64;      // position of '=' or current character
-	unsigned char mem65;     // position of ')'
-	unsigned char mem66;     // position of '('
+    uint8_t mem64;      // position of '=' or current character
+	uint8_t mem65;     // position of ')'
+	uint8_t mem66;     // position of '('
 
 	unsigned char Y;
 
 	int r;
+
+    inputtemp.resize(input.size() + 1);
 
 	inputtemp[0] = ' ';
 
@@ -106,26 +110,51 @@ int TextToPhonemes(unsigned char *input) {
 		if ( A >= 112) A = A & 95;
 		else if ( A >= 96) A = A & 79;
 		inputtemp[++X] = A;
-	} while (X < 255);
-	inputtemp[255] = 27;
-	mem56 = mem61 = 255;
+	} while (X < input.size());
+	mem56 = mem61 = X;
 
+    auto ResizeIncrement = [&](uint16_t &value) {
+        value++;
+        if (value >= input.capacity())
+        {
+            input.reserve((value + 1) * 2);
+        }
+        if (value >= input.size())
+        {
+            input.resize(value + 1);
+        }
+        return value;
+        };
+    auto PreIncrement = [](uint16_t &value) {
+        value = (value + 1) % inputtemp.size();
+        return value;
+        };
+
+    auto AddModInputTempSize = [](const uint16_t value) {
+        return (value + 1) % inputtemp.size();
+        };
+
+    auto SubModInputTempSize = [](const uint16_t value) {
+        return (value + inputtemp.size() - 1) % inputtemp.size();
+        };
+
+    bool firstTime = true;
 pos36554:
     while (1) {
         while(1) {
-            X = ++mem61;
+            X = PreIncrement(mem61);
             mem64 = inputtemp[X];
             if (mem64 == '[') {
-                X = ++mem56;
-                input[X] = 155;
+                X = PreIncrement(mem56);
+                input.push_back(155);
                 return 1;
             }
             
             if (mem64 != '.') break;
-            X++;
+            PreIncrement(X);
             A = tab36376[inputtemp[X]] & 1;
             if(A != 0) break;
-            mem56++;
+            ResizeIncrement(mem56);
             X = mem56;
             A = '.';
             input[X] = '.';
@@ -138,10 +167,11 @@ pos36554:
         
         if(mem57 != 0) break;
         inputtemp[X] = ' ';
-        X = ++mem56;
-        if (X > 120) {
-            input[X] = 155;
-            return 1;
+        if (firstTime) {
+            X = mem56 = 0;
+            firstTime = false;
+        } else {
+            X = ResizeIncrement(mem56);
         }
         input[X] = 32;
     }
@@ -171,7 +201,7 @@ pos36700:
 	while(1) {
 		if (GetRuleByte(mem62, Y) != inputtemp[X]) goto pos36700;
 		if(++Y == mem65) break;
-		mem60 = ++X;
+		mem60 = PreIncrement(X);
 	}
 
     // the string in the bracket is correct
@@ -189,39 +219,40 @@ pos36700:
             }
             X = mem57 & 127;
             if ((tab36376[X] & 128) == 0) break;
-            if (inputtemp[mem59-1] != mem57) goto pos36700;
-            --mem59;
+            if (inputtemp[SubModInputTempSize(mem59)] != mem57) goto pos36700;
+            mem59 = SubModInputTempSize(mem59);
         }
 
         ch = mem57;
 
-        r = handle_ch2(ch, mem59-1);
+        r = handle_ch2(ch, SubModInputTempSize(mem59));
         if (r == -1) {
             switch (ch) {
             case '&':
-                if (!Code37055(mem59-1,16)) {
+                if (!Code37055(SubModInputTempSize(mem59), 16)) {
                     if (inputtemp[X] != 'H') r = 1;
                     else {
-                        A = inputtemp[--X];
+                        X = SubModInputTempSize(X);
+                        A = inputtemp[X];
                         if ((A != 'C') && (A != 'S')) r = 1;
                     }
                 }
                 break;
                 
             case '@':
-                if(!Code37055(mem59-1,4)) { 
+                if(!Code37055(SubModInputTempSize(mem59),4)) {
                     A = inputtemp[X];
                     if (A != 72) r = 1;
                     if ((A != 84) && (A != 67) && (A != 83)) r = 1;
                 }
                 break;
             case '+':
-                X = mem59;
-                A = inputtemp[--X];
+                X = SubModInputTempSize(mem59);
+                A = inputtemp[X];
                 if ((A != 'E') && (A != 'I') && (A != 'Y')) r = 1;
                 break;
             case ':':
-                while (Code37055(mem59-1,32)) --mem59;
+                while (Code37055(SubModInputTempSize(mem59), 32)) mem59 = SubModInputTempSize(mem59);
                 continue;
             default:
                 return 0;
@@ -234,12 +265,12 @@ pos36700:
     }
 
     do {
-        X = mem58+1;
+        X = AddModInputTempSize(mem58);
         if (inputtemp[X] == 'E') {
-            if((tab36376[inputtemp[X+1]] & 128) != 0) {
-                A = inputtemp[++X];
+            if((tab36376[inputtemp[AddModInputTempSize(X)]] & 128) != 0) {
+                A = inputtemp[PreIncrement(X)];
                 if (A == 'L') {
-                    if (inputtemp[++X] != 'Y') goto pos36700;
+                    if (inputtemp[PreIncrement(X)] != 'Y') goto pos36700;
                 } else if ((A != 'R') && (A != 'S') && (A != 'D') && !match("FUL")) goto pos36700;
             }
         } else {
@@ -260,7 +291,10 @@ pos37184:
                     while(1) {
                         mem57 = A = GetRuleByte(mem62, Y);
                         A = A & 127;
-                        if (A != '=') input[++mem56] = A;
+                        if (A != '=') {
+                            ResizeIncrement(mem56);
+                            input[mem56] = A;
+                        }
                         if ((mem57 & 128) != 0) goto pos36554;
                         Y++;
                     }
@@ -268,17 +302,17 @@ pos37184:
                 mem65 = Y;
                 mem57 = GetRuleByte(mem62, Y);
                 if((tab36376[mem57] & 128) == 0) break;
-                if (inputtemp[mem58+1] != mem57) {
+                if (inputtemp[AddModInputTempSize(mem58)] != mem57) {
                     r = 1;
                     break;
                 }
-                ++mem58;
+                PreIncrement(mem58);
             }
 
             if (r == 0) {
                 A = mem57;
                 if (A == '@') {
-                    if(Code37055(mem58+1, 4) == 0) {
+                    if(Code37055(AddModInputTempSize(mem58), 4) == 0) {
                         A = inputtemp[X];
                         if ((A != 82) && (A != 84) && 
                             (A != 67) && (A != 83)) r = 1;
@@ -286,9 +320,9 @@ pos37184:
                         r = -2;
                     }
                 } else if (A == ':') {
-                    while (Code37055(mem58+1, 32)) mem58 = X;
+                    while (Code37055(AddModInputTempSize(mem58), 32)) mem58 = X;
                     r = -2;
-                } else r = handle_ch(A, mem58+1);
+                } else r = handle_ch(A, AddModInputTempSize(mem58));
             }
 
             if (r == 1) goto pos36700;

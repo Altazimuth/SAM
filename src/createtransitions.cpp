@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <vector>
 #include "render.h"
 
 // CREATE TRANSITIONS
@@ -37,22 +39,17 @@
 // phoneme.
 
 // From render.c
-extern unsigned char phonemeIndexOutput[60]; //tab47296
-extern unsigned char phonemeLengthOutput[60]; //tab47416
+extern std::vector<uint8_t> phonemeIndexOutput; //tab47296
+extern std::vector<uint8_t> phonemeLengthOutput; //tab47416
 
 // from RenderTabs.h
 extern unsigned char blendRank[];
 extern unsigned char outBlendLength[];
 extern unsigned char inBlendLength[];
-extern unsigned char pitches[];
+extern std::vector<uint8_t> pitches;
 
-extern unsigned char frequency1[256];
-extern unsigned char frequency2[256];
-extern unsigned char frequency3[256];
-
-extern unsigned char amplitude1[256];
-extern unsigned char amplitude2[256];
-extern unsigned char amplitude3[256];
+extern std::vector<uint8_t> amplitude[3];
+extern std::vector<uint8_t> frequency[3];
 
 //written by me because of different table positions.
 // mem[47] = ...
@@ -63,34 +60,34 @@ extern unsigned char amplitude3[256];
 // 172=amplitude1
 // 173=amplitude2
 // 174=amplitude3
-unsigned char Read(unsigned char p, unsigned char Y)
+unsigned char Read(unsigned char p, uint16_t Y)
 {
 	switch(p)
 	{
 	case 168: return pitches[Y];
-	case 169: return frequency1[Y];
-	case 170: return frequency2[Y];
-	case 171: return frequency3[Y];
-	case 172: return amplitude1[Y];
-	case 173: return amplitude2[Y];
-	case 174: return amplitude3[Y];
+	case 169: return frequency[0][Y];
+	case 170: return frequency[1][Y];
+	case 171: return frequency[2][Y];
+	case 172: return amplitude[0][Y];
+	case 173: return amplitude[1][Y];
+	case 174: return amplitude[2][Y];
 	default: 
 		printf("Error reading from tables");
 		return 0;
 	}
 }
 
-void Write(unsigned char p, unsigned char Y, unsigned char value)
+void Write(unsigned char p, uint16_t Y, unsigned char value)
 {
 	switch(p)
 	{
 	case 168: pitches[Y]    = value; return;
-	case 169: frequency1[Y] = value; return;
-	case 170: frequency2[Y] = value; return;
-	case 171: frequency3[Y] = value; return;
-	case 172: amplitude1[Y] = value; return;
-	case 173: amplitude2[Y] = value; return;
-	case 174: amplitude3[Y] = value; return;
+	case 169: frequency[0][Y] = value; return;
+	case 170: frequency[1][Y] = value; return;
+	case 171: frequency[2][Y] = value; return;
+	case 172: amplitude[0][Y] = value; return;
+	case 173: amplitude[1][Y] = value; return;
+	case 174: amplitude[2][Y] = value; return;
 	default:
 		printf("Error writing to tables\n");
 		return;
@@ -99,7 +96,7 @@ void Write(unsigned char p, unsigned char Y, unsigned char value)
 
 
 // linearly interpolate values
-void interpolate(unsigned char width, unsigned char table, unsigned char frame, char mem53)
+void interpolate(unsigned char width, unsigned char table, uint16_t frame, char mem53)
 {
     unsigned char sign      = (mem53 < 0);
     unsigned char remainder = abs(mem53) % width;
@@ -121,7 +118,7 @@ void interpolate(unsigned char width, unsigned char table, unsigned char frame, 
     }
 }
 
-void interpolate_pitch(unsigned char pos, unsigned char mem49, unsigned char phase3) {
+void interpolate_pitch(uint16_t pos, uint16_t mem49, unsigned char phase3) {
     // unlike the other values, the pitches[] interpolates from 
     // the middle of the current phoneme to the middle of the 
     // next phoneme
@@ -136,17 +133,17 @@ void interpolate_pitch(unsigned char pos, unsigned char mem49, unsigned char pha
 }
 
 
-unsigned char CreateTransitions()
+uint16_t CreateTransitions()
 {
-	unsigned char mem49 = 0; 
-	unsigned char pos = 0;
+	uint16_t mem49 = 0; 
+	uint16_t pos = 0;
 	while(1) {
 		unsigned char next_rank;
 		unsigned char rank;
-		unsigned char speedcounter;
+		uint16_t speedcounter;
 		unsigned char phase1;
 		unsigned char phase2;
-		unsigned char phase3;
+		uint16_t phase3;
 		unsigned char transition;
 
 		unsigned char phoneme      = phonemeIndexOutput[pos];
