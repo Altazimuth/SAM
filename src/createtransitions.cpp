@@ -60,34 +60,34 @@ extern std::vector<uint8_t> frequency[3];
 // 172=amplitude1
 // 173=amplitude2
 // 174=amplitude3
-unsigned char Read(unsigned char p, uint16_t Y)
+unsigned char Read(tables_e table, uint16_t Y)
 {
-	switch(p)
+	switch(table)
 	{
-	case 168: return pitches[Y];
-	case 169: return frequency[0][Y];
-	case 170: return frequency[1][Y];
-	case 171: return frequency[2][Y];
-	case 172: return amplitude[0][Y];
-	case 173: return amplitude[1][Y];
-	case 174: return amplitude[2][Y];
+	case tables_e::pitches:   return pitches[Y];
+	case tables_e::freq_0:    return frequency[0][Y];
+	case tables_e::freq_1:    return frequency[1][Y];
+	case tables_e::freq_2:    return frequency[2][Y];
+	case tables_e::tab_amp_0: return amplitude[0][Y];
+	case tables_e::tab_amp_1: return amplitude[1][Y];
+	case tables_e::tab_amp_2: return amplitude[2][Y];
 	default: 
 		printf("Error reading from tables");
 		return 0;
 	}
 }
 
-void Write(unsigned char p, uint16_t Y, unsigned char value)
+void Write(tables_e table, uint16_t Y, unsigned char value)
 {
-	switch(p)
+	switch(table)
 	{
-	case 168: pitches[Y]    = value; return;
-	case 169: frequency[0][Y] = value; return;
-	case 170: frequency[1][Y] = value; return;
-	case 171: frequency[2][Y] = value; return;
-	case 172: amplitude[0][Y] = value; return;
-	case 173: amplitude[1][Y] = value; return;
-	case 174: amplitude[2][Y] = value; return;
+	case tables_e::pitches:   pitches[Y]      = value; return;
+	case tables_e::freq_0:    frequency[0][Y] = value; return;
+	case tables_e::freq_1:    frequency[1][Y] = value; return;
+	case tables_e::freq_2:    frequency[2][Y] = value; return;
+	case tables_e::tab_amp_0: amplitude[0][Y] = value; return;
+	case tables_e::tab_amp_1: amplitude[1][Y] = value; return;
+	case tables_e::tab_amp_2: amplitude[2][Y] = value; return;
 	default:
 		printf("Error writing to tables\n");
 		return;
@@ -96,11 +96,11 @@ void Write(unsigned char p, uint16_t Y, unsigned char value)
 
 
 // linearly interpolate values
-void interpolate(unsigned char width, unsigned char table, uint16_t frame, char mem53)
+void interpolate(unsigned char width, tables_e table, uint16_t frame, char value)
 {
-    unsigned char sign      = (mem53 < 0);
-    unsigned char remainder = abs(mem53) % width;
-    unsigned char div       = mem53 / width;
+    bool          sign      = (value < 0);
+    unsigned char remainder = abs(value) % width;
+    unsigned char div       = value / width;
 
     unsigned char error = 0;
     unsigned char pos   = width;
@@ -118,7 +118,7 @@ void interpolate(unsigned char width, unsigned char table, uint16_t frame, char 
     }
 }
 
-void interpolate_pitch(uint16_t pos, uint16_t mem49, unsigned char phase3) {
+void interpolate_pitch(uint16_t pos, uint16_t total_prev_width, uint16_t phase3) {
     // unlike the other values, the pitches[] interpolates from 
     // the middle of the current phoneme to the middle of the 
     // next phoneme
@@ -128,14 +128,14 @@ void interpolate_pitch(uint16_t pos, uint16_t mem49, unsigned char phase3) {
     unsigned char next_width = phonemeLengthOutput[pos+1] / 2;
     // sum the values
     unsigned char width = cur_width + next_width;
-    char pitch = pitches[next_width + mem49] - pitches[mem49- cur_width];
-    interpolate(width, 168, phase3, pitch);
+    char pitch = pitches[next_width + total_prev_width] - pitches[total_prev_width - cur_width];
+    interpolate(width, tables_e::pitches, phase3, pitch);
 }
 
 
 uint16_t CreateTransitions()
 {
-	uint16_t mem49 = 0; 
+	uint16_t total_prev_width = 0; 
 	uint16_t pos = 0;
 	while(1) {
 		unsigned char next_rank;
@@ -171,16 +171,16 @@ uint16_t CreateTransitions()
 			phase2 = inBlendLength[phoneme];
 		}
 
-		mem49 += phonemeLengthOutput[pos]; 
+		total_prev_width += phonemeLengthOutput[pos];
 
-		speedcounter = mem49 + phase2;
-		phase3       = mem49 - phase1;
+		speedcounter = total_prev_width + phase2;
+		phase3       = total_prev_width - phase1;
 		transition   = phase1 + phase2; // total transition?
 		
 		if (((transition - 2) & 128) == 0) {
-            unsigned char table = 169;
-            interpolate_pitch(pos, mem49, phase3);
-            while (table < 175) {
+			tables_e table = tables_e::freq_0;
+            interpolate_pitch(pos, total_prev_width, phase3);
+            while (table < tables_e::MAXIMUM) {
                 // tables:
                 // 168  pitches[]
                 // 169  frequency1
@@ -192,12 +192,12 @@ uint16_t CreateTransitions()
                 
                 char value = Read(table, speedcounter) - Read(table, phase3);
                 interpolate(transition, table, phase3, value);
-                table++;
+                table = tables_e(int(table) + 1);
             }
         }
 		++pos;
 	} 
 
     // add the length of this phoneme
-    return mem49 + phonemeLengthOutput[pos];
+    return total_prev_width + phonemeLengthOutput[pos];
 }

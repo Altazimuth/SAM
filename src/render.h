@@ -16,4 +16,16 @@ uint16_t CreateTransitions();
 #define RISING_INFLECTION (1)
 #define FALLING_INFLECTION (255)
 
+enum class tables_e : uint8_t
+{
+    pitches = 168,
+    freq_0,
+    freq_1,
+    freq_2,
+    tab_amp_0,
+    tab_amp_1,
+    tab_amp_2,
+    MAXIMUM // exclusive
+};
+
 #endif
